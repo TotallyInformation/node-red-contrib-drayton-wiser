@@ -1,0 +1,68 @@
+<script type="text/javascript">/* eslint-disable strict */
+
+// Isolate this code
+(function () {
+    'use strict'
+
+    const nodeLabel = 'wiser-listen'
+
+    RED.nodes.registerType(nodeLabel, {
+        category: 'home automation',
+        color: '#F6E0F8', //'#E6E0F8',
+        defaults: {
+            name: { value: '' },
+            eventname: { value: '', required: true },
+        },
+        inputs: 0,
+        //inputLabels: 'Msg with topic property',
+        outputs: 1,
+        outputLabels: ['Data from event'],
+        icon: 'ui_template.png',
+        paletteLabel: nodeLabel,
+        label: function () { return this.name || `wiser/${this.eventname}` || nodeLabel },
+        
+    }) // ---- End of registerType() ---- //
+
+}())</script><script type="text/html" data-template-name="wiser-listen"><div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name">
+</div>
+<div class="form-row">
+    <label for="node-input-eventname"><i class="fa fa-tasks"></i> Event Name</label><br>
+    wiser/<input type="text" id="node-input-eventname">
+</div></script><script type="text/html" data-help-name="wiser-listen"><p>
+    Event-driven notifications. Listen for ANY event that uses the <code>ti-common-event-handler</code> module.
+    An instance of this node will output a message from any ti event handler even name specified.
+</p>
+
+<h3>Inputs</h3>
+<p>
+    There are no inputs. The node is triggered by an event produced by any code using the ti-common-event-handler.
+</p>
+
+<h3>Outputs</h3>
+<p>
+    The node outputs a message for each matching event.
+</p>
+
+<h3>Node Settings</h3>
+<dl class="message-properties">
+    <dt>Name <span class="property-type">string</span></dt>
+    <dd>A short description shown in the admin interface</dd>
+
+    <dt>Event Name <span class="property-type">string</span></dt>
+    <dd>
+        <p>
+            <b>REQUIRED</b>. The event name to match.<br>
+            The defined string may include the character <code>*</code> (or <code>+</code>) to act as a single-level wildcard.
+            Use <code>**</code> or <code>#</code> for a multi-level wildcard.
+            The <code>/</code> character acts as a level (namespace) separator for the wildcards.
+        </p>
+        <h5>Example</h5>
+        <p>
+            <code>one/*/three</code> will match events named <code>one/two/three</code>, <code>one/99/three</code>, etc.<br>
+            <code>one/**</code> or <code>one/#</code> will match events named like <code>one/two/three</code>, or <code>one/99</code>.<br>
+        </p>
+    </dd>
+
+</dl></script>

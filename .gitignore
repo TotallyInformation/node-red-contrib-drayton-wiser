@@ -102,3 +102,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# VScode
+.vscode
+.vscode/cSpell.json
+.vscode/settings.json
+*.code-workspace

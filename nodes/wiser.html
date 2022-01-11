@@ -1,0 +1,52 @@
+<script>///<reference path="../typings/global.d.ts">
+/*:: declare var RED: Object */
+
+// Isolate this code
+(function () {
+  'use strict'
+  
+  // @ts-ignore
+  const RED = window.RED
+
+  /** Module name must match this nodes html file @constant {string} moduleName */
+  const moduleName = 'wiser'
+  /** Node's label @constant {string} paletteCategory */
+  const nodeLabel = moduleName
+  /** Node's palette category @constant {string} paletteCategory */
+  const paletteCategory = 'home automation'
+  /** Node's background color @constant {string} paletteColor */
+  const paletteColor = '#F6E0F8' // '#E6E0F8'
+
+  /** Prep for edit
+   * @param {*} node A node instance as seen from the Node-RED Editor
+   */
+  function onEditPrepare (node) {
+
+  } // ----- end of onEditPrepare() ----- //
+
+  RED.nodes.registerType(moduleName, {
+    category: paletteCategory,
+    color: paletteColor,
+    defaults: {
+      name: { value: ''},
+    },
+    credentials: {
+      host: { type:'text' },  // text or password
+      secret: { type:'text' },  // text or password
+    },
+    // align:'right',
+    inputs: 1,
+    inputLabels: 'Msg to cache or cache control msg',
+    outputs: 1,
+    outputLabels: ['Through msg or msg from cache'],
+    icon: 'parser-json.svg',
+    paletteLabel: nodeLabel,
+    label: function () { 
+      return this.name || nodeLabel
+    },
+
+    oneditprepare: function () { onEditPrepare(this) },
+        
+  }) // ---- End of registerType() ---- //
+
+}())</script><script type="text/html" data-template-name="wiser"><div aria-label="Name label" title="Only used for labelling in the flow" class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> Name</label> <input type="text" id="node-input-name"></div><div aria-label="Controller IP Address (credential)" class="form-row" title="Required. A IP address of the controller. Stored as a credential so not copied when exporting a flow."><label for="node-input-host"><i class="fa fa-user-secret"></i> IP Address</label> <input type="text" id="node-input-host" placeholder="Enter the controller IP Address" required></div><div aria-label="Controller Secret (credential)" class="form-row" title="Required. A string used as a key to get data from the controller. Stored as a credential so not copied when exporting a flow."><label for="node-input-secret"><i class="fa fa-user-secret"></i> Secret</label> <input type="text" id="node-input-secret" placeholder="Enter the controller secret" required></div></script><script type="text/html" data-help-name="wiser"><p>Monitor and control a Drayton Wiser smart heating system.</p><h3>Inputs</h3><p>TBC</p><h3>Outputs</h3><p>TBC</p><h3>Node Settings</h3><dl class="message-properties"><dt>Name <span class="property-type">string</span></dt><dd>A short description shown in the admin interface.</dd><dt>IP Addr <span class="property-type">string</span></dt><dd>IP address of the Wiser Control Unit. Stored as a credential so not copied if copying the flow.</dd><dt>Secret <span class="property-type">string</span></dt><dd>Secret key used to enable access to the controller API. Stored as a credential so not copied if copying the flow.<p>In order to interface with the controller, you need to know a very long string of random characters that is its system secret.</p><p>You can get the system secret on a Windows 10 PC by doing the following:</p><ol><li>Press the setup button on your HeatHub, the light will start flashing</li><li>Look for the Wi-Fi network (SSID) called ‘WiserHeatXXX’ where XXX is random</li><li>Connect to the network from a Windows PC</li><li>Once connected run the following command in PowerShell:<p><code>Invoke-RestMethod -Method Get -UseBasicParsing -Uri http://192.168.8.1/secret/</code></p><p>If you are using a different type of operating system, you will need a tool that will return data from a web query.</p></li><li>This will return a string which is your system secret</li><li>Press the setup button on the HeatHub again and it will go back to normal operations</li><li>Copy the secret and save it somewhere.</li></ol><p></p><p>Instead of PowerShell, you can use curl, wget or similar tools that also work on other platforms</p></dd></dl><p><b>NOTE</b> that there is an example flow in the examples library that demonstrates the use of this node. Use the Editor's menu, import, Examples, node-red-contrib-drayton-wiser.</p></script>
