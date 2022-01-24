@@ -52,8 +52,7 @@ function simpleObjectSort(out) {
         }, 
         {}
     )
-}
-
+} // ---- End of simpleObjectSort ---- //
 
 class WiserClass {
     // TODO: Replace _XXX with #XXX once node.js v14 is the minimum supported version
@@ -107,7 +106,9 @@ class WiserClass {
         }
 
         /** URL paths to specific controller data */
-        this._servicePaths = {
+        this._servicePathsV1 = {
+            baseUrl: 'http://{}/',
+
             network: '/data/network/', // Controller's network info including curr/max/min WiFi signal strength
             wifiRSSI: '/data/network/Station/RSSI/',
 
@@ -122,6 +123,31 @@ class WiserClass {
             system: '/data/domain/System/',
             trvs: '/data/domain/SmartValve/',
         }
+        this._servicePaths = {
+            baseUrl: 'http://{}/data/v2/',
+
+            network: 'network/', // Controller's network info including curr/max/min WiFi signal strength
+            wifiRSSI: 'network/Station/RSSI/',
+
+            schedules: 'schedules/',
+
+            full:      'domain/',              // System, Cloud, HeatingChannel, Room, Device, Zigbee, UpgradeInfo, SmartValve, RoomStat, DeviceCapabilityMatrix, Schedule
+            devices:   'domain/Device/',       // append device id to get to a single device
+            heating:   'domain/HeatingChannel/',
+            rooms:     'domain/Room/',        // append room id to get to a single device
+            roomStats: 'domain/RoomStat/',    // append device id to get to a single device
+            system:    'domain/System/',
+            brandName: 'domain/System/BrandName/', // Used for quick check of valid connection, always returns 'WiserHeat'
+            trvs:      'domain/SmartValve/',  // append device id to get to a single device
+        }
+        /*
+            WISERDEVICE = "Device/{}"
+            WISERHOTWATER = "HotWater/{}"
+            WISERSMARTPLUG = "SmartPlug/{}"
+            WISERHEATINGACTUATOR = "HeatingActuator/{}"
+            WISERSHUTTER = "Shutter/{}"
+            WISERLIGHT = "Light/{}"
+         */
 
         /** Default configuration for Axios promised-based http request handler
         * @see https://github.com/axios/axios#request-config
@@ -246,13 +272,13 @@ class WiserClass {
     } // ---- End of testConnection ---- //
 
     /** Get all data from controller */
-    async getAll() {
+    async apiGetAll() {
 
         if (!this._axiosConfig.baseURL || !this._axiosConfig.headers.SECRET) {
-            throw Error ('[wiser:wiser-class.js:getAll] both IP and SECRET must be provided before testing the connection, call instanceSetup() first')
+            throw Error ('[wiser:wiser-class.js:apiGetAll] both IP and SECRET must be provided before testing the connection, call instanceSetup() first')
         } 
 
-        this.debug('getAll', 'Get all from controller') //, this._axiosConfig)
+        //this.debug('getAll', 'API get all from controller') //, this._axiosConfig)
 
         // Make a request for all data from the controller using axios
         let res
@@ -262,7 +288,8 @@ class WiserClass {
             // Only report change of status
             if ( this.lastConnectionSuccessful === true ) {
                 tiEvents.emit('wiser/online', false )
-                this.debug('getAll', 'Controller now OFFLINE')
+                //this.debug('apiGetAll', 'Controller now OFFLINE')
+                this.log.warn(`[wiser:wiser-class.js:apiGetAll] Controller CANNOT BE REACHED. Is it online?`)
             }
             this.lastConnectionSuccessful = false
 
@@ -278,7 +305,8 @@ class WiserClass {
             }
 
             tiEvents.emit('wiser/error/get-all', e )
-            this.debug('getAll', 'Get All FAILED', e.message)
+            //this.debug('apiGetAll', 'API get All FAILED', e.message)
+            this.log.warn(`[wiser:wiser-class.js:apiGetAll] API get All FAILED ${e.message}`)
             //throw new Error(`[wiser:wiser-class.js:getAll] Call to controller failed. ${e.message}`)
 
             return false
@@ -298,17 +326,80 @@ class WiserClass {
         // Only report change of status
         if ( this.lastConnectionSuccessful !== true ) {
             tiEvents.emit('wiser/online', true )
-            this.debug('getAll', 'Controller now online')
+            //this.debug('apiGetAll', 'Controller now online')
+            this.log.info(`[wiser:wiser-class.js:apiGetAll] Controller REACHABLE`)
         }
         this.lastConnectionSuccessful = true
         this.lastConnection = new Date()    
 
         tiEvents.emit('wiser/success/get-all', res.data )
-        this.debug('getAll', 'Get All successful') //, res.data)
+        //this.debug('apiGetAll', 'API get All successful') //, res.data)
+        this.log.trace(`[wiser:wiser-class.js:apiGetAll] API get All successful`)
 
         return true
 
+    } // ---- End of apiGetAll ---- //
+
+    /** Get network data from controller
+     * @returns {*} Either an error object or the data returned from the API call
+     */
+    async apiGetNetwork() {
+
+        if (!this._axiosConfig.baseURL || !this._axiosConfig.headers.SECRET) {
+            throw Error ('[wiser:wiser-class.js:apiGetNetwork] both IP and SECRET must be provided before testing the connection, call instanceSetup() first')
+        } 
+
+        this.debug('apiGetNetwork', 'API Get network details from controller') //, this._axiosConfig)
+
+        // Make a request for all data from the controller using axios
+        let res
+        try {
+            res = await axios.get(this._servicePaths.network, this._axiosConfig)
+
+            tiEvents.emit('wiser/success/get-api-network', res.data )
+            this.debug('apiGetNetwork', 'API get network successful') //, res.data)
+    
+            return res.data
+        } catch (e) {
+            tiEvents.emit('wiser/error/get-api-network', e )
+            this.debug('apiGetNetwork', 'API get network FAILED', e.message)
+
+            return e
+        }
+
     } // ---- End of getAll ---- //
+
+    /** Get schedule data from controller
+     * @param {number} schedId Schedule ID to list
+     * @returns {*} Either an error object or the data returned from the API call
+     */
+     async apiGetSchedule(schedId) {
+
+        if (!this._axiosConfig.baseURL || !this._axiosConfig.headers.SECRET) {
+            throw Error ('[wiser:wiser-class.js:apiGetSchedule] both IP and SECRET must be provided before testing the connection, call instanceSetup() first')
+        } 
+
+        this.debug('apiGetSchedule', 'API Get schedule details from controller') //, this._axiosConfig)
+
+        let uri = schedId ? `${this._servicePaths.schedules}${schedId}/` : this._servicePaths.schedules
+
+        // Make a request for all data from the controller using axios
+        let res
+        try {
+            res = await axios.get(uri, this._axiosConfig)
+
+            tiEvents.emit('wiser/success/get-api-schedule', res.data )
+            this.debug('apiGetSchedule', 'API get schedule successful') //, res.data)
+    
+            return res.data
+        } catch (e) {
+            tiEvents.emit('wiser/error/get-api-schedule', e )
+            this.debug('apiGetSchedule', 'API get schedule FAILED', e.message)
+
+            return e
+        }
+
+    } // ---- End of apiGetSchedule ---- //
 
     /** Mark whether the last connection to the controller was successful
      * - called where getAll is called - instanceSetup() and monitor()
@@ -455,7 +546,10 @@ class WiserClass {
             return false
         }
 
-        let defaultIFv4 = nifs[gw.interface].filter( ipv => ipv.family === 'IPv4')[0]
+        let defaultIFv4
+        try {
+            defaultIFv4 = nifs[gw.interface].filter( ipv => ipv.family === 'IPv4')[0]
+        } catch (e) {}
         this.debug('checkGateway', `Gateway IP: ${gw.gateway}, External IP: ${defaultIFv4.address}`)
 
         return /** @type {boolean} */ (gwAlive)
@@ -555,13 +649,15 @@ class WiserClass {
             return false
         }
 
-        this.debug('createMonitor', 'Monitor starting.')
+        //this.debug('createMonitor', 'Monitor starting.')
+        this.log.info(`[wiser:wiser-class.js:createMonitor] Interval=${this.defaults.MONITOR_LOOP_INTERVAL}s`)
 
         this.monitor = setInterval(async () => {
 
             tiEvents.emit('wiser/monitor-interval', {timestamp: new Date(), interval: this.defaults.MONITOR_LOOP_INTERVAL} )
+            this.log.trace(`[wiser:wiser-class.js:createMonitor] Monitor loop. Interval=${this.defaults.MONITOR_LOOP_INTERVAL}s`)
 
-            await this.getAll()
+            await this.apiGetAll()
 
         }, this.defaults.MONITOR_LOOP_INTERVAL * 1000 ) // --- End of setInterval --- //
 
@@ -576,17 +672,17 @@ class WiserClass {
      */
     destroyMonitor(monitorIntervalRef) {
         if ( this.monitor === undefined ) {
-            this.debug('destroyMonitor', 'Attempt to destroy non-existent monitor - ignored')
+            this.log.debug('[wiser:wiser-class.js:destroyMonitor] Attempt to destroy non-existent monitor - ignored')
             return false
         }
 
-        this.debug('createMonitor', 'Monitor ending.')
+        this.log.trace('[wiser:wiser-class.js:destroyMonitor] Monitor ending')
 
         clearInterval(monitorIntervalRef)
         this.monitor = undefined
         
         tiEvents.emit('wiser/monitor-interval-removed' )
-        this.debug('destroyMonitor', 'Monitor interval timer removed')
+        this.log.trace('[wiser:wiser-class.js:destroyMonitor] Monitor interval timer removed')
 
         return true
     } // ---- End of destroyMonitor ---- //
@@ -794,9 +890,180 @@ class WiserClass {
 
     } // ---- End of getSystemState ---- //
 
+    /** Return a list of all event names with brief description */
+    getEventNames() {
+
+        return {
+            // Monitor outputs
+            'wiser/cloudConnection': 
+                'When the status of the controller to Wiser Cloud connection changes',
+            'wiser/changes': 
+                'Value difference between previous and current calls to the controller. Data is an object detailing the change.',
+            'wiser/online': 
+                'When the online status of the controller changes. Data is `true` if the controller can be contacted.',
+            
+            // Specific get events (responses to requests)
+            'wiser/battery-levels': 
+                'When getBatteryLevels completes. Data is all devices having batteries.',
+            'wiser/error/get-battery-levels': 
+                'When getBatteryLevels errors.',
+            'wiser/room-temperatures': 
+                'When getRoomTemps completes. Data is all devices having batteries.',
+            'wiser/error/get-room-temperatures': 
+                'When getRoomTemps returns an error',
+            'wiser/offline-devices': 
+                'When getOfflineDevices completes. Data is all devices currently offline because of no battery or some other reason.',
+            'wiser/error/get-offline-devices': 
+                'When getOfflineDevices fails to complete.',
+            'wiser/system-state': 
+                'When getSystemState completes. Data is the main system and heating channel states',
+            'wiser/success/get-api-network': 
+                '',
+            'wiser/error/get-api-network': 
+                '',
+            'wiser/success/get-api-schedule': 
+                '',
+            'wiser/error/get-api-schedule': 
+                '',
+
+            // Specific set events (responses to requests)
+            'wiser/set/room-temperature': 
+                '',
+            'wiser/error/set/room-temperature': 
+                '',
+            '': 
+                '',
+
+            // System or node information
+            'wiser/monitor-interval-created': 
+                'When the monitor is create. Data is a reference to the monitor\'s interval object.',
+            'wiser/monitor-interval-removed': 
+                'When the monitor is removed',
+            'wiser/monitor-intervalmonitor-interval': 
+                'Every time the monitor gets a full update from the controller',
+            'wiser/debug': 
+                'All debug messages. May include extra data.',
+
+            // System or node errors
+            'wiser/success/get-all': 
+                'If a call to the controller for all data succeeds',
+            'wiser/error/get-all': 
+                'If a call to the controller for all data fails. Reason given in the data',
+            'wiser/success/room-map': 
+                'If the device->room map successfully updated.',
+            'wiser/error/room-map': 
+                'If the device->room map failed to update.',
+            'wiser/error/gateway-unreachable': 
+                'When the server\'s default gateway is inaccessible (e.g. the network is unavailable). Output on each call to the controller.',
+            'wiser/error/controller-unreachable': 
+                'When the controller cannot be reached over the network but the gateway is OK. Output on each call to the controller.',
+
+            // Wildcards
+            'wiser/error/**': 
+                'Subscribes to all error events. Data contains details.',
+            'wiser/set/**': 
+                'Subscribes to all successful set events. Data contains details.',
+            'wiser/success/**': 
+                'Subscribes to all success events. When a function completes successfully and doesn\'t return a more specific event.',
+            'wiser/**': 
+                'Subscribes to all events.',
+        }
+
+    } // ---- End of getEventNames ---- //
+
     //#endregion = = = = return specific data = = = = //
 
     //#endregion ===== Data processing functions ===== //
+
+    //#region ====== Set functions ===== //
+
+    /** Set function for controlling room temperature, mode, etc. */
+    setRoom() {
+
+    } // ---- End of setRoom ---- //
+
+    /** Manual override of temperature for a specified room */
+    async setRoomTemp(opts) {
+
+        // Allow for either room id or name to be used
+        let room, roomName, roomId
+        if ( typeof opts.room === 'number' ) {
+            roomId = opts.room
+            room = this.latest.Room.filter( rm => { return rm.id === roomId })
+            roomName = room[0].Name || 'Undefined'
+        } else {
+            roomName = opts.room
+            room = this.latest.Room.filter( rm => { return rm.Name.toLowerCase() === roomName.toLowerCase() })
+            roomId = room[0].id || 'Undefined'
+        }
+
+        // Temperature to set the room to in °C
+        let temp = Number(opts.temp)
+
+        // API path
+        let roomUrl = `${this._servicePaths['rooms']}${roomId}`
+
+        /** Data to send to controller hub */
+        const patchData = {}
+        /** URLs for patches - Array since we might have 2 patches to send */
+        const patches = []
+
+        patchData.RequestOverride = {
+            'Type': 'Manual',
+            'SetPoint': temp * 10, //toWiserTemp(boostTemp),
+        }
+
+        if ( roomId === 14 ) {
+            patchData.RequestOverride.CalculatedTemperature = 14
+        }
+
+        // push main request to patches
+        patches.push( axios.patch(roomUrl, patchData, this._axiosConfig) )
+
+        let ret
+        try {
+            let res = await axios.all(patches)
+            
+            ret = {
+                'result': `Temperature in room ${roomName} set to ${temp}°C`,
+                'data': {
+                    'roomId': roomId,
+                    'roomName': roomName,
+                    'numResults': res.length,
+                    'lastResult': res[res.length-1].data,
+                    'lastConfigResult': res[res.length-1].config.data,
+                },
+            }
+
+            tiEvents.emit('wiser/set/room-temperature', ret )
+            this.debug('setRoomTemp', ret.result)
+
+        } catch (e) {
+            console.error('patch error', e)
+            //return Promise.reject(e)
+            ret = {
+                'result': `Could not set temperature in room ${roomId}. ${e.message}`,
+                'data': {
+                    'roomId': roomId,
+                    'roomName': roomName,
+                    'error': e,
+                }
+            }
+
+            tiEvents.emit('wiser/error/set/room-temperature', ret )
+            this.debug('setRoomTemp', ret.result)
+        }
+
+        return ret
+        
+    } // ---- Rnd of setRoomTemp ---- //
+
+    //#endregion ====== Set functions ===== //
+
+    //#region ====== Event Listeners ====== //
+
+
+    //#endregion ====== Event Listeners ====== //
 
     //#region ====== Instance functions ===== //
 
@@ -805,12 +1072,12 @@ class WiserClass {
      */
     async instanceSetup(node) {
 
-        this._axiosConfig.baseURL = `http://${node.host}`
+        this._axiosConfig.baseURL = this._servicePaths.baseUrl.replace('{}',node.host)
         this._axiosConfig.headers.SECRET = node.secret
 
-        await this.getAll()
+        await this.apiGetAll()
 
-        this.debug('instanceSetup', 'Instance setup completed') //, this.latest) //, res.data)
+        this.log.trace('[wiser:wiser-class.js:instanceSetup] Instance setup completed')
         return this.lastConnectionSuccessful
     } // ---- End of instanceSetup ---- //
 
