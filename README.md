@@ -4,6 +4,8 @@ Monitor and control Drayton Wiser smart heating systems from Node-RED.
 > WARNING: Things are still changing in this node, sometimes quite drastically. Use with caution until I can stabilise things a bit more.
 > Also, there are no `set` functions available yet, just monitoring. They are coming though :-)
 
+> Treat the 0.2 release as an early beta. I want to publish early to get feedback and start to use on my live service.
+
 ## Summary
 
 Gives you information about what has changed between calls to the controller (something that is hard to do as the controller itself doesn't provide that), keeps a copy of all of the current data, has commands to get information summaries such as battery state and room temperatures as well as listing the available commands and events. Has a "listener" node that lets you subscribe to any of the updates and errors. It polls the controller on a default 60s cycle.
@@ -52,6 +54,8 @@ This enables you to subscribe to one or more of the events produced by the main 
 You can have as many of these nodes as you need in your flows.
 
 Use one of the event names listed in the next section as the event name to monitor. You don't need to include the `wiser/` part, that is fixed for you.
+
+Event names can include single level wildcards (`*` or `+`) or multi-level (`** or `#`).
 
 
 ## Event Names
@@ -165,3 +169,11 @@ TBC:
 The API data doesn't include the allocated room name on the device data, this node adds the `Room` property to each device. The room name will be 'Undefined' if the device is not included in a room (e.g. the controller).
 
 If the battery is dead, the API drops the `BatteryVoltage`, `BatteryLevel` and DisplayedSignalStrength properties. The node adds these back in with values: `BatteryVoltage = 0`, `BatteryLevel = 'Dead'` and `DisplayedSignalStrength = 'Offline'`.
+
+## References
+
+A couple of other libraries exist for access and control of Wiser systems.
+
+* https://github.com/msp1974/wiserheatapiv2 - Uses v2 of the API which has a number of changes
+* https://github.com/asantaga/wiserheatingap - Uses v1 of the API (with some examples here: https://github.com/steversig/wiserheatingapi-examples)
+* 
