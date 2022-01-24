@@ -1,6 +1,6 @@
 {
   "name": "@totallyinformation/red-contrib-drayton-wiser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Easily create data-driven web UI's for Node-RED using any (or no) front-end library.",
   "scripts": {
     "build": "gulp",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@totallyinformation/ti-common-event-handler": "github:totallyinformation/ti-common-event-handler",
-    "axios": "^0.24.0",
+    "axios": "^0.25.0",
     "deep-object-diff": "^1.1.0",
     "default-gateway": "^6.0.3",
     "ping": "^0.4.1"
