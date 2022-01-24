@@ -107,9 +107,51 @@ function inputMsgHandler(msg, send, done) { // eslint-disable-line no-unused-var
             break
         }
 
+        case 'device-roommap': {
+            msg.payload = wiser.deviceRoomMap
+            this.send(msg)            
+            break
+        }
+
+        case 'schedules': {
+            wiser.apiGetSchedule(msg.requestDetail)
+                .then( data => {
+                    msg.payload = data
+                    this.send(msg)            
+                })
+            break
+        }
+
+        case 'devices-last-seen': {
+            msg.payload = wiser.deviceLastSeen
+            this.send(msg)            
+            break
+        }
+
         case 'system-state': {
             msg.payload = wiser.getSystemState()
             this.send(msg)            
+            break
+        }
+
+        case 'set-room': {
+            msg.payload = 
+            wiser.setRoomTemp(msg.requestDetail)
+                .then( res => {
+                    msg.payload = res.result
+                    msg.data = res.data
+                    this.send(msg)
+                })
+            break
+        }
+
+        case 'get-network': {
+            msg.payload = 
+            wiser.apiGetNetwork()
+                .then( res => {
+                    msg.payload = res
+                    this.send(msg)
+                })
             break
         }
 
@@ -120,41 +162,20 @@ function inputMsgHandler(msg, send, done) { // eslint-disable-line no-unused-var
                 'offline-devices': 'Lists any devices (TRV\'s, Roomstats, etc) that are currently not connected to the controller over the Zigbee network',
                 'isonline': 'Is the controller currently online?',
                 'system-state': 'Data about the current state of the overall system',
+                'get-network': 'Technical information about the controller network settings and performance.',
                 'latest': 'Output the current full list of properties',
                 'event-names': 'Output a list of all event names with explanations', 
                 'request-names': 'Output a list of all requests with explanations (this list)',
+
+                'set-room': '',
             }
             this.send(msg)            
             break
         }
     
         case 'event-names': {
-            msg.payload = {
-                'wiser/monitor-interval-created': 'When the monitor is create. Data is a reference to the monitor\'s interval object.',
-                'wiser/monitor-interval-removed': 'When the monitor is removed',
-                'wiser/monitor-intervalmonitor-interval': 'Every time the monitor gets a full update from the controller',
-                'wiser/cloudConnection': 'When the status of the controller to Wiser Cloud connection changes',
-                'wiser/changes': 'Value difference between previous and current calls to the controller. Data is an object detailing the change.',
-                'wiser/online': 'When the online status of the controller changes. Data is `true` if the controller can be contacted.', 
-                'wiser/debug': 'All debug messages. May include extra data.',
-                'wiser/battery-levels': 'When getBatteryLevels completes. Data is all devices having batteries.',
-                'wiser/error/get-battery-levels': 'When getBatteryLevels errors.',
-                'wiser/room-temperatures': 'When getRoomTemps completes. Data is all devices having batteries.',
-                'wiser/error/get-room-temperatures': 'When getRoomTemps returns an error',
-                'wiser/offline-devices': 'When getOfflineDevices completes. Data is all devices currently offline because of no battery or some other reason.',
-                'wiser/error/get-offline-devices': 'When getOfflineDevices fails to complete.',
-                'wiser/system-state': 'When getSystemState completes. Data is the main system and heating channel states',
-                'wiser/success/get-all': 'If a call to the controller for all data succeeds',
-                'wiser/error/get-all': 'If a call to the controller for all data fails. Reason given in the data',
-                'wiser/success/room-map': 'If the device->room map successfully updated.',
-                'wiser/error/room-map': 'If the device->room map failed to update.',
-                'wiser/error/gateway-unreachable': 'When the server\'s default gateway is inaccessible (e.g. the network is unavailable). Output on each call to the controller.',
-                'wiser/error/controller-unreachable': 'When the controller cannot be reached over the network but the gateway is OK. Output on each call to the controller.',
-                'wiser/error/*': 'Subscribes to all error events. Data contains details.',
-                'wiser/success/*': 'Subscribes to all successe events.',
-                'wiser/**': 'Subscribes to all events.',
-            }
-            this.send(msg)            
+            msg.payload = wiser.getEventNames()
+            this.send(msg)
             break
         }
     
