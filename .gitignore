@@ -108,3 +108,6 @@ dist
 .vscode/cSpell.json
 .vscode/settings.json
 *.code-workspace
+
+# TI
+_*
