@@ -10,6 +10,8 @@ There is quite a bit still to do on this node however, I want to publish early t
 
 * Check/Fix
   * 3x monitors running?
+  * Editor - not showing error triangle when dropped (when required fields are empty) whereas the listener does
+  * Set a retry after failing to connect, don't report on first fail since they happen regularly.
 
 * Editor - wiser node
   * monitor interval
@@ -17,7 +19,10 @@ There is quite a bit still to do on this node however, I want to publish early t
   * topic - if missing, use event name as topic
 
 * wiser-class.js
+  * Command to turn off the monitor
   * Extended monitor option - runs all the get.... fns as well - use for MQTT output
+  * If getAll fails, try 1 more time after a few seconds
+  * Add `ping` with value of timestamp
   * fn to list all listeners
   * fns to list all event names and requests - include descriptions
   * Set functions

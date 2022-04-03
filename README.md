@@ -2,7 +2,7 @@
 Monitor and control Drayton Wiser smart heating systems from Node-RED.
 
 > WARNING: Things are still changing in this node, sometimes quite drastically. Use with caution until I can stabilise things a bit more.
-> Also, there are no `set` functions available yet, just monitoring. They are coming though :-)
+> Also, limited `set` functions are available so far. More are are coming though :-)
 
 > Treat the 0.2 release as an early beta. I want to publish early to get feedback and start to use on my live service.
 
