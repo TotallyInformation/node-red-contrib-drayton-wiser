@@ -1,11 +1,16 @@
 const axios = require('axios').default /** see https://github.com/axios/axios */
 
+// const controllerAddr = 'http://192.168.1.xxx'
+// const controllerSecret = 'xxxxxxxxxxxx'
+// Put your addr and secret in a _local.js file that isn't added to git
+const {controllerAddr, controllerSecret} = require('./_local')
+
 const axiosConfig = {
     //url: undefined,
-    baseURL: 'http://192.168.1.xxx',
+    baseURL: controllerAddr,
     //method: undefined,
     headers: {
-        'SECRET': 'xxxxxxxxxxxx',
+        'SECRET': controllerSecret,
         'Content-Type': 'application/json;charset=UTF-8',
     },
     //httpAgent: new http.Agent({ keepAlive: true }),
