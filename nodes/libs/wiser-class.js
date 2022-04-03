@@ -34,7 +34,7 @@ const http = require('http')
 const axios = require('axios').default /** see https://github.com/axios/axios */
 //const { diff, addedDiff, deletedDiff, detailedDiff, updatedDiff } = require('deep-object-diff')
 const { updatedDiff } = require('deep-object-diff') /** see https://www.npmjs.com/package/deep-object-diff#updateddiff */
-const { cp } = require('fs')
+//const { cp } = require('fs')
 
 // tiEvents.onAny(function(event, value) {
 //     console.log('TI EVENT: ', event, value);
@@ -241,6 +241,26 @@ class WiserClass {
         this.debug('setup', 'Setup fn complete') //, this)
 
     } // ---- End of setup ---- //
+
+    /** Return the latest entry for a specified room from either the id or the name
+     * @returns {any|undefined} Only returns a single entry from latest.Room (or undefined)
+     */
+    returnRoom(roomIdOrName) {
+            // Allow for either room id or name to be used            
+            let room, roomName, roomId
+
+            if ( typeof roomIdOrName === 'number' ) {
+                roomId = roomIdOrName
+                room = this.latest.Room.filter( rm => { return rm.id === roomId })
+                roomName = room[0].Name || 'Undefined'
+            } else {
+                roomName = roomIdOrName
+                room = this.latest.Room.filter( rm => { return rm.Name.toLowerCase() === roomName.toLowerCase() })
+                roomId = room[0].id || 'Undefined'
+            }
+
+            return room[0]
+    }
 
     //#region ===== Data processing functions ===== //
 
@@ -978,27 +998,49 @@ class WiserClass {
     //#region ====== Set functions ===== //
 
     /** Set function for controlling room temperature, mode, etc. */
-    setRoom() {
+    async setRoom(opts) {
 
-    } // ---- End of setRoom ---- //
+        //#region -- validate opts --
+        let optsValid = true
 
-    /** Manual override of temperature for a specified room */
-    async setRoomTemp(opts) {
+        if ( !opts.room ) optsValid = false
+        if ( opts.temp && ! Number.isNaN( Number(opts.temp) ) ) optsValid = false
 
-        // Allow for either room id or name to be used
-        let room, roomName, roomId
-        if ( typeof opts.room === 'number' ) {
-            roomId = opts.room
-            room = this.latest.Room.filter( rm => { return rm.id === roomId })
-            roomName = room[0].Name || 'Undefined'
-        } else {
-            roomName = opts.room
-            room = this.latest.Room.filter( rm => { return rm.Name.toLowerCase() === roomName.toLowerCase() })
-            roomId = room[0].id || 'Undefined'
+        if ( optsValid !== true ) {
+            tiEvents.emit('wiser/error/set-room', `Invalid options.` )
+            this.debug('setRoom', `Invalid options`)
+            return
         }
 
+        if ( !opts.temp ) opts.temp = -20 // -20 is the temperature used for OFF
+        //#endregion -- validate opts --
+
+        // Allow for either room id or name to be used
+        const room = this.returnRoom(opts.room)
+        if ( room === undefined ) {
+            tiEvents.emit('wiser/error/set-room', `Room not found for '${opts.room}'.` )
+            this.debug('setRoom', `Room not found for '${opts.room}'.`)
+            return
+        }
+
+        const roomName = room.Name
+        const roomId = room.id
+
         // Temperature to set the room to in °C
+        // Limit temperature requests (must be 5-30 °C or -200=off)
         let temp = Number(opts.temp)
+        if ( temp !== -20 ) {
+            if ( (temp < this.defaults.TEMP_MINIMUM) ) {
+                tiEvents.emit('wiser/error/get-battery-levels',`Requested temperature too low (${temp}), setting to allowed minimum (${this.defaults.TEMP_MINIMUM}) for room: ${roomName} (${roomId}).` )
+                this.debug('getBatteryLevels', `Requested temperature too low (${temp}), setting to allowed minimum (${this.defaults.TEMP_MINIMUM}) for room: ${roomName} (${roomId}).`)
+                temp = this.defaults.TEMP_MINIMUM
+            }
+            if ( temp > this.defaults.TEMP_MAXIMUM ) {
+                tiEvents.emit('wiser/error/set-room-temperature', `Requested temperature too high (${temp}), setting to max. allowed (${this.defaults.TEMP_MAXIMUM}) for room: ${roomName} (${roomId}).` )
+                this.debug('setRoomTemp', `Requested temperature too high (${temp}), setting to max. allowed (${this.defaults.TEMP_MAXIMUM}) for room: ${roomName} (${roomId}).`)
+                temp = this.defaults.TEMP_MAXIMUM
+            }
+        }
 
         // API path
         let roomUrl = `${this._servicePaths['rooms']}${roomId}`
@@ -1013,9 +1055,95 @@ class WiserClass {
             'SetPoint': temp * 10, //toWiserTemp(boostTemp),
         }
 
-        if ( roomId === 14 ) {
-            patchData.RequestOverride.CalculatedTemperature = 14
+        // if ( roomId === 14 ) {
+        //     patchData.RequestOverride.CalculatedTemperature = 14
+        // }
+
+        // push main request to patches
+        patches.push( axios.patch(roomUrl, patchData, this._axiosConfig) )
+
+        let ret
+        try {
+            let res = await axios.all(patches)
+            
+            ret = {
+                'result': `Temperature in room ${roomName} set to ${temp}°C`,
+                'data': {
+                    'roomId': roomId,
+                    'roomName': roomName,
+                    'numResults': res.length,
+                    'lastResult': res[res.length-1].data,
+                    'lastConfigResult': res[res.length-1].config.data,
+                },
+            }
+
+            tiEvents.emit('wiser/set/room-temperature', ret )
+            this.debug('setRoomTemp', ret.result)
+
+        } catch (e) {
+            console.error('patch error', e)
+            //return Promise.reject(e)
+            ret = {
+                'result': `Could not set temperature in room ${roomId}. ${e.message}`,
+                'data': {
+                    'roomId': roomId,
+                    'roomName': roomName,
+                    'error': e,
+                }
+            }
+
+            tiEvents.emit('wiser/error/set/room-temperature', ret )
+            this.debug('setRoomTemp', ret.result)
         }
+
+        return ret
+        
+    } // ---- End of setRoom ---- //
+
+    /** Manual override of temperature for a specified room */
+    async setRoomTemp(opts) {
+
+        // Allow for either room id or name to be used
+        const room = this.returnRoom(opts.room)
+
+        if ( room === undefined ) {
+            tiEvents.emit('wiser/error/set/room-temperature', `Room not found for '${opts.room}'.` )
+            this.debug('setRoomTemp', `Room not found for '${opts.room}'.`)
+            return
+        }
+
+        const roomName = room.Name
+        const roomId = room.id
+
+        // Temperature to set the room to in °C
+        let temp = Number(opts.temp)
+        if ( (temp < this.defaults.TEMP_MINIMUM) ) {
+            tiEvents.emit('wiser/error/get-battery-levels',`Requested temperature too low (${temp}), setting to allowed minimum (${this.defaults.TEMP_MINIMUM}) for room: ${roomName} (${roomId}).` )
+            this.debug('getBatteryLevels', `Requested temperature too low (${temp}), setting to allowed minimum (${this.defaults.TEMP_MINIMUM}) for room: ${roomName} (${roomId}).`)
+            temp = this.defaults.TEMP_MINIMUM
+        }
+        if ( temp > this.defaults.TEMP_MAXIMUM ) {
+            tiEvents.emit('wiser/error/set-room-temperature', `Requested temperature too high (${temp}), setting to max. allowed (${this.defaults.TEMP_MAXIMUM}) for room: ${roomName} (${roomId}).` )
+            this.debug('setRoomTemp', `Requested temperature too high (${temp}), setting to max. allowed (${this.defaults.TEMP_MAXIMUM}) for room: ${roomName} (${roomId}).`)
+            temp = this.defaults.TEMP_MAXIMUM
+        }
+
+        // API path
+        let roomUrl = `${this._servicePaths['rooms']}${roomId}`
+
+        /** Data to send to controller hub */
+        const patchData = {}
+        /** URLs for patches - Array since we might have 2 patches to send */
+        const patches = []
+
+        patchData.RequestOverride = {
+            'Type': 'Manual',
+            'SetPoint': temp * 10, //toWiserTemp(boostTemp),
+        }
+
+        // if ( roomId === 14 ) {
+        //     patchData.RequestOverride.CalculatedTemperature = 14
+        // }
 
         // push main request to patches
         patches.push( axios.patch(roomUrl, patchData, this._axiosConfig) )
